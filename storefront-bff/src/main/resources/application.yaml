@@ -1,0 +1,74 @@
+server:
+  port: 8087
+spring:
+  application:
+    name: storefront-bff
+  profiles:
+    active: dev
+  security:
+    oauth2:
+      client:
+        provider:
+          keycloak:
+            issuer-uri: http://identity/auth/realms/Yas
+        registration:
+          keycloak:
+            provider: keycloak
+            client-id: storefront-bff
+            client-secret: ZrU9I0q2uXBglBnmvyJdkl1lf0ncr8tn
+            scope: openid, profile, email, roles
+  sleuth:
+    otel:
+      config:
+        trace-id-ratio-based: 1.0
+      exporter:
+        otlp:
+          endpoint: http://jaeger:30017
+---
+
+spring:
+  config:
+    activate:
+      on-profile: "dev"
+  cloud:
+      gateway:
+        routes:
+        - id: api
+          #uri: http://localhost:8080
+          uri: http://api.yas.local
+          predicates:
+              - Path=/api/**
+          filters:
+              - RewritePath=/api/(?<segment>.*), /$\{segment}
+              - TokenRelay=
+        - id: nextjs
+          uri: http://localhost:3000
+          predicates:
+              - Path=/**
+---
+
+spring:
+  config:
+    activate:
+      on-profile: "prod"
+  cloud:
+      gateway:
+        routes:
+          - id: api
+            uri: http://product
+            predicates:
+                - Path=/api/product/**
+            filters:
+                - RewritePath=/api/(?<segment>.*), /$\{segment}
+                - TokenRelay=
+          - id: nextjs
+            uri: http://localhost:3000
+            predicates:
+                - Path=/**
+---
+
+yas:
+  services:
+    customer: http://api.yas.local/customer
+    cart: http://api.yas.local/cart
+    token-identity: http://identity/auth/realms/Yas/protocol/openid-connect/token
